@@ -1,25 +1,22 @@
-# Model Architecture (dev-version)
+# Model Architecture
 
-## Input layer
-`app/src/ui/controls.js` собирает сырые пользовательские значения из формы.
+## Modular calculation core (`app/src/model`)
 
-## Units layer
-`app/src/model/units.js` содержит конвертеры единиц и нормализацию размерностей.
+- `params.js`: parameter definitions and default raw values.
+- `units.js`: normalization from raw UI values to solver units/derived parameters.
+- `geometry.js`: node positions, penetration, pressure, normal force integration.
+- `contact.js`: strain/curvature field preparation used by solver.
+- `brush.js`: brush displacement, friction limiting, Fx/Fy/Mz integration.
+- `solver.js`: initialize/iterate/run lifecycle for reduced model solving.
+- `results.js`: final scalar metrics for UI table/cards.
 
-## Geometry layer
-`app/src/model/geometry.js` отвечает за начальное состояние и геометрию деформации.
+## State and orchestration
 
-## Contact layer
-`app/src/model/contact.js` отвечает за построение геометрии пятна контакта.
+- `app/src/state.js`: state object creation for arrays and solver bookkeeping.
+- `app/src/ui/controls.js`: parameter controls rendering/reading/writing.
+- `app/src/ui/presets.js`: default preset provider.
+- `app/src/app.js`: app wiring, run/reset actions, status updates, results rendering.
 
-## Brush/friction layer
-`app/src/model/brush.js` предназначен для касательных сил и щеточной модели.
+## UI shell
 
-## Solver layer
-`app/src/model/solver.js` содержит итерационный алгоритм расчета.
-
-## Rendering layer
-`app/src/render/` содержит слои визуализации: колесо, пятно контакта, графики.
-
-## Report/export layer
-`app/src/ui/report.js` формирует текстовый отчет по результатам для UI и будущего экспорта.
+`app/index.html` loads scripts in plain script-tag dependency order (no modules/bundler), compatible with GitHub Pages and local preview tools.

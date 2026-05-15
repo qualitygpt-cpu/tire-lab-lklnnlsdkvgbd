@@ -1,42 +1,30 @@
 (function () {
-  function updateStatus(text) {
-    document.getElementById('status-panel').textContent = text;
+  function metric(label, value) { return '<div class="stat"><div class="k">' + label + '</div><div class="v">' + value + '</div></div>'; }
+  function runAndRender() {
+    var defs = window.TireLabParams.getDefaultParameterDefinitions();
+    var raw = window.TireLabControls.read(defs);
+    var state = window.TireLabSolver.run(raw, {});
+    var r = window.TireLabResults.computeResults(state);
+    document.getElementById('iter').textContent = 'Итерация: ' + r.solverIterations + ' / ' + state.p.iterations;
+    document.getElementById('res').textContent = 'Остаток: ' + r.residual.toExponential(2);
+    document.getElementById('pct').textContent = '100%'; document.getElementById('bar').style.width = '100%';
+    document.getElementById('results').innerHTML = [
+      metric('F_n цель', r.targetNormalForce.toFixed(0) + ' Н'), metric('F_n расчет', r.calculatedNormalForce.toFixed(0) + ' Н'), metric('Ошибка нормали', r.normalForceError.toFixed(0) + ' Н'),
+      metric('Fx', r.Fx.toFixed(0) + ' Н'), metric('Fy', r.Fy.toFixed(0) + ' Н'), metric('Mz', r.Mz.toFixed(1) + ' Нм'),
+      metric('мин. w', (r.minimumW * 1000).toFixed(1) + ' мм'), metric('макс. |y|', (r.maximumYAbs * 1000).toFixed(1) + ' мм'),
+      metric('длина пятна', (r.contactPatchLength * 1000).toFixed(1) + ' мм'), metric('площадь пятна', (r.contactPatchArea * 1e4).toFixed(1) + ' см²'),
+      metric('макс. |epsilon|', (r.maxEpsilonAbs * 100).toFixed(2) + ' %'), metric('p max', (r.maxContactPressure / 1000).toFixed(0) + ' кПа'),
+      metric('tau / mu p', r.tauMuPRatio.toFixed(2)), metric('итерации', String(r.solverIterations)), metric('residual', r.residual.toExponential(2))
+    ].join('');
   }
-
-  function renderCanvas(state) {
-    var canvas = document.getElementById('tire-canvas');
-    var ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    window.WheelView.drawWheel(ctx, state);
-    window.ContactPatchView.drawPatch(ctx, state);
-  }
-
-  function runCalculation(rawInput) {
-    var params = window.ParamsModel.normalizeParams(rawInput);
-    var state = window.GeometryModel.buildInitialState(params);
-    window.GeometryModel.computeGeometry(state);
-    window.ContactModel.computeContact(state);
-    window.BrushModel.computeBrushForces(state);
-    window.SolverModel.iterateSolver(state);
-    var results = window.ResultsModel.computeResults(state);
-    return { state: state, results: results };
-  }
-
   document.addEventListener('DOMContentLoaded', function () {
-    var form = document.getElementById('params-form');
-    var resultsPanel = document.getElementById('results-panel');
-
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      updateStatus('Расчет выполняется...');
-      var rawInput = window.ControlsUI.collectParams(form);
-      var output = runCalculation(rawInput);
-      window.DevState.lastRun = new Date().toISOString();
-      window.DevState.status = 'done';
-      window.DevState.data = output.state;
-      renderCanvas(output.state);
-      resultsPanel.innerHTML = window.ReportUI.formatResults(output.results);
-      updateStatus('Расчет завершен: ' + window.DevState.lastRun);
-    });
+    var defs = window.TireLabParams.getDefaultParameterDefinitions(), raw = window.TireLabPresets.getDefaults();
+    window.TireLabControls.render(document.getElementById('controls'), defs, raw);
+    window.TireLabControls.write(defs, raw);
+    window.TireLabControls.updateLabels(defs);
+    defs.forEach(function (d) { document.getElementById(d.key).addEventListener('input', function () { window.TireLabControls.updateLabels(defs); }); });
+    document.getElementById('nodes').addEventListener('change', function () { window.TireLabControls.updateLabels(defs); });
+    document.getElementById('run').addEventListener('click', runAndRender);
+    document.getElementById('reset').addEventListener('click', function () { var r = window.TireLabPresets.getDefaults(); window.TireLabControls.write(defs, r); window.TireLabControls.updateLabels(defs); });
   });
 })();

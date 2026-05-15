@@ -1,12 +1,17 @@
-# Reference cases (placeholders)
+# Reference cases and manual regression checklist
 
-1. Vertical static load
-   - TODO: определить целевые входы/выходы для вертикальной нагрузки.
-2. Longitudinal slope
-   - TODO: эталон для продольного уклона.
-3. Lateral banking
-   - TODO: эталон для поперечного уклона/креновой плоскости.
-4. Slip angle
-   - TODO: эталон для угла увода.
-5. Low pressure vs high pressure
-   - TODO: сравнительный кейс низкого/высокого давления.
+## Manual regression (legacy vs modular app)
+
+1. Open `legacy/tire_reduced_fem_model_original.html`.
+2. Open `app/index.html`.
+3. Use same default parameters and node count.
+4. Run both calculations.
+5. Compare qualitatively:
+   - normal force,
+   - contact patch length,
+   - maximum contact pressure,
+   - Fx,
+   - Fy.
+6. Record any discrepancies.
+
+> Note: exact parity is not yet guaranteed until rendering paths and all diagnostics from legacy are fully migrated.
