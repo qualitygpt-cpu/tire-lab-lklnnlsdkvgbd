@@ -1,27 +1,31 @@
 # Reference cases and manual regression checklist
 
-## Manual regression (legacy vs modular app)
+Набор сценариев фиксирует повторяемые качественные ожидания без изменения формул и коэффициентов модели.
 
-1. Open `legacy/tire_reduced_fem_model_original.html`.
-2. Open `app/index.html`.
-3. Use same default parameters and node count.
-4. Run both calculations.
-5. Compare qualitatively:
-   - normal force,
-   - contact patch length,
-   - maximum contact pressure,
-   - Fx,
-   - Fy.
-6. Record any discrepancies.
+## Как использовать
 
-## Visual regression checklist (app)
+1. Откройте `app/index.html`.
+2. Выберите сценарий в поле **«Расчетный сценарий»**.
+3. Нажмите **«Рассчитать»** (или используйте автозапуск после выбора).
+4. Проверьте блок **«Что проверить»** и сравните с графиками/метриками.
 
-- [ ] Default case shows tire touching road.
-- [ ] Contact patch appears at bottom of tire.
-- [ ] Strain plot is not empty.
-- [ ] Pressure plot appears only in contact zone.
-- [ ] Shear plot changes when slip angle or slip ratio changes.
-- [ ] Increasing load increases deformation/contact patch qualitatively.
-- [ ] Increasing pressure reduces deformation/contact patch qualitatively.
+## Регрессионные сценарии
 
-> Note: visual parity is approximate and should be manually checked.
+| Preset | Input intent | Expected qualitative behavior | Graphs/results to inspect | Pass/fail checklist |
+|---|---|---|---|---|
+| Базовый легковой автомобиль | Базовая контрольная точка для сравнения остальных режимов | Стабильное пятно контакта, конечные Fx/Fy, гладкие графики p(x), tau | `длина пятна`, `площадь пятна`, `Fx`, `Fy`, pressure/shear plots | [ ] Пятно контакта непрерывно; [ ] Графики не пустые; [ ] Нет аномальных скачков |
+| Низкое давление | Проверка реакции на уменьшение `pressureKPa` | Пятно контакта и прогиб увеличиваются | `длина пятна`, `площадь пятна`, `мин. w`, pressure plot | [ ] Пятно больше базового; [ ] Прогиб по модулю больше; [ ] p(x) шире |
+| Высокое давление | Проверка реакции на увеличение `pressureKPa` | Пятно контакта и прогиб уменьшаются | `длина пятна`, `площадь пятна`, `мин. w`, pressure plot | [ ] Пятно меньше базового; [ ] Прогиб меньше; [ ] Пик p(x) более локальный |
+| Большая нагрузка | Проверка реакции на увеличение `mass` | Увеличение нормальной нагрузки и деформации | `F_n расчет`, `длина пятна`, `площадь пятна`, `мин. w` | [ ] F_n выше базового; [ ] Пятно больше; [ ] Деформация больше |
+| Продольный уклон | Проверка влияния `slopeDeg` на продольные эффекты | Меняется баланс Fx и профиль tau_x | `Fx`, `Mz`, shear plot (`tau_x`) | [ ] Fx изменился относительно базы; [ ] tau_x распределение изменилось |
+| Боковой уклон | Проверка влияния `bankDeg` на боковые эффекты | Рост асимметрии и вклад в Fy/tau_y | `Fy`, `макс. |y|`, shear plot (`tau_y`) | [ ] Fy отличается от базы; [ ] Видна асимметрия по боковому сдвигу |
+| Поворот с углом увода | Проверка режима cornering через `slipDeg` | Возрастание бокового сдвига и Fy | `Fy`, `tau / mu p`, shear plot (`tau_y`) | [ ] Fy по модулю выше прямолинейного; [ ] tau_y выражен |
+| Скользкое покрытие | Проверка работы при низком `mu` | Раннее насыщение трения, ограничение Fx/Fy | `tau / mu p`, `Fx`, `Fy`, shear/pressure plots | [ ] tau/(mu·p) ближе к пределу; [ ] Fx/Fy ограничены |
+| Торможение | Проверка отрицательного `slipRatio` | Доминирование продольной сдвиговой реакции торможения | `Fx`, shear plot (`tau_x`) | [ ] Fx соответствует тормозному знаку модели; [ ] tau_x выражен |
+| Разгон | Проверка положительного `slipRatio` | Продольная реакция противоположна торможению | `Fx`, shear plot (`tau_x`) | [ ] Знак Fx противоположен торможению; [ ] |Fx| сопоставим при равном \\|κ\\| |
+
+## Legacy vs modular sanity check
+
+1. Откройте `legacy/tire_reduced_fem_model_original.html` и `app/index.html`.
+2. Для базового сценария проверьте порядок величин: `F_n`, `длина пятна`, `p max`, `Fx`, `Fy`.
+3. Сравнение выполняется качественно, допустимы небольшие расхождения визуализации.
