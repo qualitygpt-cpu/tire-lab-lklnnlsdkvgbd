@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TireLab</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="container hero">
+    <h1>TireLab</h1>
+    <p class="subtitle">расчетная модель деформации автомобильной шины</p>
+  </header>
+
+  <main class="container grid">
+    <section class="warning" aria-label="Предупреждение">
+      <strong>Модель экспериментальная. Нельзя использовать для сертификационных или ответственных инженерных расчетов без валидации.</strong>
+    </section>
+
+    <section class="card">
+      <h2>1. Цель проекта</h2>
+      <p>Собрать прозрачный инженерный инструмент для поэтапного расчета деформации шины и анализа поведения в контакте с дорогой.</p>
+    </section>
+
+    <section class="card">
+      <h2>2. Что будет рассчитываться</h2>
+      <p>Контур деформации, оценка пятна контакта и качественные характеристики касательных напряжений в упрощенной постановке.</p>
+    </section>
+
+    <section class="card">
+      <h2>3. Статус модели</h2>
+      <p>Текущая версия — каркас проекта. Расчетное ядро еще не реализовано.</p>
+    </section>
+
+    <section class="card">
+      <h2>4. Следующие шаги</h2>
+      <p>Импорт legacy-прототипа, разделение логики, документирование формул и подготовка верификационных кейсов.</p>
+    </section>
+
+    <section class="card canvas-placeholder" aria-label="Область визуализации">
+      <div>Здесь будет визуализация шины, пятна контакта и эпюр.</div>
+    </section>
+
+    <aside class="card status-panel" aria-label="Панель статуса">
+      <h2>Статус</h2>
+      <ul>
+        <li><span>Версия:</span> <strong>0.1.0</strong></li>
+        <li><span>Тип проекта:</span> <strong>static HTML/JS</strong></li>
+        <li><span>Расчетное ядро:</span> <strong>not implemented yet</strong></li>
+        <li><span>Визуализация:</span> <strong>placeholder</strong></li>
+        <li><span>Страница загружена:</span> <strong id="load-timestamp">—</strong></li>
+      </ul>
+    </aside>
+  </main>
+
+  <script src="src/app.js"></script>
+</body>
+</html>
