@@ -1,12 +1,53 @@
 window.GeometryModel = {
   buildInitialState: function buildInitialState(params) {
-    // TODO: Перенести начальную инициализацию состояния из legacy (до geom/fields/iterate).
-    return { params: params, geometry: null, contact: null, brush: null, solver: null, results: null };
+    var N = params.N;
+    var phi = new Float64Array(N);
+    var w = new Float64Array(N);
+    var u = new Float64Array(N);
+    var y = new Float64Array(N);
+    var i;
+    for (i = 0; i < N; i++) {
+      phi[i] = i * params.dphi;
+    }
+    var dz = Math.min(0.06, Math.max(0.004, params.Ntarget / 230000));
+    return { params: params, phi: phi, w: w, u: u, y: y, Cz: params.R0 - dz };
   },
   computeGeometry: function computeGeometry(state) {
-    // TODO: Перенести geom() из legacy-модели с сохранением исходных вычислений.
-    var deflectionM = state.params.loadN / Math.max(state.params.pressurePa * state.params.widthM, 1);
-    state.geometry = { deflectionM: deflectionM, effectiveRadiusM: Math.max(state.params.radiusM - deflectionM, 0) };
+    var p = state.params;
+    var N = p.N;
+    var x = new Float64Array(N);
+    var z = new Float64Array(N);
+    var pen = new Float64Array(N);
+    var pc = new Float64Array(N);
+    var Fn = 0;
+    var c = 0;
+    var xmin = 1e9;
+    var xmax = -1e9;
+    var maxPen = 0;
+    var i;
+    for (i = 0; i < N; i++) {
+      var ph = state.phi[i];
+      var erx = Math.sin(ph);
+      var erz = -Math.cos(ph);
+      var etx = Math.cos(ph);
+      var etz = Math.sin(ph);
+      x[i] = (p.R0 + state.w[i]) * erx + state.u[i] * etx;
+      z[i] = state.Cz + (p.R0 + state.w[i]) * erz + state.u[i] * etz;
+      pen[i] = Math.max(0, -z[i]);
+      pc[i] = p.kc * pen[i];
+      if (pen[i] > 1e-8) {
+        c++;
+        Fn += pc[i] * p.b * p.ds;
+        xmin = Math.min(xmin, x[i]);
+        xmax = Math.max(xmax, x[i]);
+        maxPen = Math.max(maxPen, pen[i]);
+      }
+    }
+    if (!c) {
+      xmin = 0;
+      xmax = 0;
+    }
+    state.geometry = { x: x, z: z, pen: pen, pc: pc, Fn: Fn, c: c, xmin: xmin, xmax: xmax, maxPen: maxPen };
     return state.geometry;
   }
 };
