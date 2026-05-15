@@ -95,3 +95,5 @@ h1 {
     grid-column: 1 / -1;
   }
 }
+
+.dev-button { display:inline-block; padding:10px 14px; background:#22c55e; color:#052e16; border-radius:8px; font-weight:700; text-decoration:none; }
