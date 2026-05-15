@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reduced FEM - деформация бескамерной шины на уклоне</title>
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--ink:#111827;--muted:#667085;--line:#d8dee7;--blue:#1d4ed8;--red:#dc2626;--green:#16a34a;--orange:#ea580c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink)}.wrap{max-width:1500px;margin:auto;padding:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 30px rgba(0,0,0,.07);padding:16px;margin-bottom:14px}
+h1{margin:0 0 8px;font-size:28px}h2{margin:0 0 12px;font-size:19px}.muted{color:var(--muted)}.small{font-size:13px;line-height:1.45}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:14px;align-items:start}.row{margin-bottom:12px}.row label{display:flex;justify-content:space-between;font-weight:700;font-size:13px;margin-bottom:5px}
+input[type=range],select,button{width:100%}button,select{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;font-weight:700}button{background:#111827;color:white;cursor:pointer}.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.secondary{background:white;color:#111827}
+.progress{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:10px;margin-top:12px}.bar{height:12px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:8px 0}.bar div{height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#0f766e)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px}.stat{background:#fbfcfe;border:1px solid var(--line);border-radius:14px;padding:10px}.stat .k{font-size:12px;color:var(--muted)}.stat .v{font-size:19px;font-weight:800;margin-top:5px}
+.viz{display:grid;grid-template-columns:1.6fr 1fr;gap:12px;margin-top:14px}.plots{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+canvas{width:100%;background:white;border:1px solid var(--line);border-radius:14px;display:block}.formula{white-space:pre-wrap;background:#eef4ff;border:1px solid #c9dbff;border-radius:12px;padding:10px;font-family:"Courier New",monospace;font-size:13px}.warn{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;color:#8a3f0a}
+.legend{font-size:12px;color:var(--muted);margin-top:8px;display:flex;flex-wrap:wrap;gap:10px}.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+@media(max-width:1100px){.grid,.viz{grid-template-columns:1fr}.stats,.plots{grid-template-columns:1fr 1fr}}@media(max-width:650px){.stats,.plots,.btns{grid-template-columns:1fr}h1{font-size:23px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<h1>Reduced FEM модель деформации бескамерной шины на уклоне</h1>
+<p class="muted">Расчетная демонстрация: покрышка задается кольцом из узлов. Считаются радиальная деформация <b>w</b>, окружное смещение <b>u</b>, боковое смещение <b>y</b>, окружная деформация <b>epsilon</b>, контактное давление, brush-сдвиг протектора и пятно контакта.</p>
+<div class="warn small">Это не промышленная 3D FEM-модель. Для точного расчета реальной шины нужны: слои корда, брекер, гиперупругая резина, контакт с диском, рисунок протектора, температура, качение и 3D контакт. Здесь реализован reduced FEM: elastic ring + penalty contact + brush model.</div>
+</div>
+<div class="grid">
+<aside>
+<div class="card">
+<h2>Параметры</h2>
+<div class="row"><label><span>Узлов по окружности</span><span id="nodesVal"></span></label><select id="nodes"><option>64</option><option selected>96</option><option>128</option></select></div>
+<div id="controls"></div>
+<div class="btns"><button id="run">Рассчитать</button><button id="reset" class="secondary">Сброс</button></div>
+<div class="progress"><b>Прогресс расчета: <span id="pct">0%</span></b><div class="bar"><div id="bar"></div></div><div class="small muted" id="iter">Итерация: 0 / 0</div><div class="small muted" id="res">Остаток: -</div></div>
+</div>
+<div class="card">
+<h2>Модель</h2>
+<div class="formula">r_i = C + (R0 + w_i)e_r + u_i e_t + y_i e_y
+
+epsilon_i = du/ds + w_i/R0 + 0.5(dw/ds - u_i/R0)^2
+
+chi_i = d2w/ds2 - (1/R0)du/ds
+
+p_i = kc max(0, -g_i)
+
+tau = kb q,   |tau| <= mu p_i</div>
+<p class="small muted">Цвет контура показывает окружное сжатие и растяжение. Стрелки в контакте показывают сдвиг протектора и боковой увод.</p>
+</div>
+</aside>
+<main>
+<div class="card">
+<h2>Результаты</h2>
+<div id="stats" class="stats"></div>
+<div class="viz">
+<div>
+<canvas id="wheel" width="980" height="650"></canvas>
+<div class="legend"><span><i class="sw" style="background:#2563eb"></i>сжатие</span><span><i class="sw" style="background:#e5e7eb"></i>нейтрально</span><span><i class="sw" style="background:#dc2626"></i>растяжение</span><span><i class="sw" style="background:#22c55e"></i>сцепление</span><span><i class="sw" style="background:#f97316"></i>скольжение</span></div>
+</div>
+<div><canvas id="patch" width="520" height="300"></canvas><div style="height:12px"></div><canvas id="strain" width="520" height="300"></canvas></div>
+</div>
+<div class="plots"><canvas id="pressure" width="620" height="280"></canvas><canvas id="shear" width="620" height="280"></canvas></div>
+</div>
+</main>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const defs=[
+['mass','Нагрузка на колесо',150,750,10,350,'кг'],['slopeDeg','Продольный уклон',-20,25,1,10,'°'],['bankDeg','Боковой уклон',-15,15,1,3,'°'],
+['pressureKPa','Давление в шине',160,320,5,220,'кПа'],['radius','Внешний радиус R0',0.28,0.42,0.005,0.34,'м'],['rimRadius','Радиус диска',0.14,0.25,0.005,0.19,'м'],
+['widthMM','Ширина шины',165,315,5,225,'мм'],['mu','Коэффициент трения mu',0.25,1.15,0.05,0.85,''],['slipDeg','Угол увода alpha',-12,12,0.5,4,'°'],
+['slipRatio','Продольное скольжение kappa',-0.2,0.2,0.01,0.03,''],['EAkN','Окружная жесткость EA',250,2500,50,1100,'кН'],['EI','Изгибная жесткость EI',5,160,5,55,'Нм²'],
+['krkN','Радиальная связь kr',80,850,10,340,'кН/м²'],['kykN','Боковая связь ky',50,700,10,260,'кН/м²'],['treadMPa','Сдвиговая жесткость протектора kb',1,22,0.5,8,'МПа/м'],
+['contactMPa','Penalty контакт kc',10,120,5,55,'МПа/м'],['iterations','Итераций решателя',200,1800,100,900,'']];
+const controls=$('controls'),inp={},defaults={}; let st=null,run=false,it=0,maxIt=0,lastRes=0;
+defs.forEach(d=>{defaults[d[0]]=d[5];let row=document.createElement('div');row.className='row';row.innerHTML=`<label><span>${d[1]}</span><span id="${d[0]}Val"></span></label><input id="${d[0]}" type="range" min="${d[2]}" max="${d[3]}" step="${d[4]}" value="${d[5]}">`;controls.appendChild(row);inp[d[0]]=$(d[0]);inp[d[0]].oninput=()=>{labels();if(!run){init();drawAll();}}});
+inp.nodes=$('nodes'); inp.nodes.onchange=()=>{labels();init();drawAll()}; $('run').onclick=calc; $('reset').onclick=()=>{defs.forEach(d=>inp[d[0]].value=d[5]);inp.nodes.value='96';labels();init();drawAll()};
+function fd(step){let s=String(step);return s.includes('.')?s.split('.')[1].length:0} function fmt(x,d=1){return Number.isFinite(x)?Number(x).toFixed(d).replace('.',','):'-'}
+function labels(){defs.forEach(d=>$(d[0]+'Val').textContent=fmt(+inp[d[0]].value,fd(d[4]))+(d[6]?' '+d[6]:''));$('nodesVal').textContent=inp.nodes.value}
+function params(){let p={};defs.forEach(d=>p[d[0]]=+inp[d[0]].value);p.N=+inp.nodes.value;p.g=9.81;p.W=p.mass*p.g;p.slope=p.slopeDeg*Math.PI/180;p.bank=p.bankDeg*Math.PI/180;p.alpha=p.slipDeg*Math.PI/180;p.R0=p.radius;p.Rrim=Math.min(p.rimRadius,p.radius*.78);p.b=p.widthMM/1000;p.pressure=p.pressureKPa*1000;p.EA=p.EAkN*1000;p.kr=p.krkN*1000;p.ky=p.kykN*1000;p.kt=p.kr*.5;p.kb=p.treadMPa*1e6;p.kc=p.contactMPa*1e6;p.Ntarget=p.W*Math.cos(p.slope)*Math.cos(p.bank);p.FxGrade=p.W*Math.sin(p.slope);p.FyReq=p.W*Math.sin(p.bank);p.dphi=2*Math.PI/p.N;p.ds=p.R0*p.dphi;p.Tp=p.pressure*p.b*p.R0;return p}
+function init(){let p=params(),N=p.N,phi=new Float64Array(N),w=new Float64Array(N),u=new Float64Array(N),y=new Float64Array(N);for(let i=0;i<N;i++)phi[i]=i*p.dphi;let dz=Math.min(.06,Math.max(.004,p.Ntarget/230000));st={p,phi,w,u,y,Cz:p.R0-dz};it=0;maxIt=p.iterations;derive();progress(0,0,0)}
+function calc(){if(run)return;init();run=true;$('run').disabled=true;$('reset').disabled=true;const chunk=()=>{for(let k=0;k<10&&it<maxIt;k++){lastRes=iterate();it++}derive();drawAll();progress(it,maxIt,lastRes);if(it<maxIt)requestAnimationFrame(chunk);else{run=false;$('run').disabled=false;$('reset').disabled=false}};requestAnimationFrame(chunk)}
+function geom(){let p=st.p,N=p.N,x=new Float64Array(N),z=new Float64Array(N),pen=new Float64Array(N),pc=new Float64Array(N),Fn=0,c=0,xmin=1e9,xmax=-1e9,maxPen=0;for(let i=0;i<N;i++){let ph=st.phi[i],erx=Math.sin(ph),erz=-Math.cos(ph),etx=Math.cos(ph),etz=Math.sin(ph);x[i]=(p.R0+st.w[i])*erx+st.u[i]*etx;z[i]=st.Cz+(p.R0+st.w[i])*erz+st.u[i]*etz;pen[i]=Math.max(0,-z[i]);pc[i]=p.kc*pen[i];if(pen[i]>1e-8){c++;Fn+=pc[i]*p.b*p.ds;xmin=Math.min(xmin,x[i]);xmax=Math.max(xmax,x[i]);maxPen=Math.max(maxPen,pen[i])}}if(!c){xmin=0;xmax=0}return{x,z,pen,pc,Fn,c,xmin,xmax,maxPen}}
+function fields(g){let p=st.p,N=p.N,eps=new Float64Array(N),chi=new Float64Array(N),duf=new Float64Array(N),qx=new Float64Array(N),qy=new Float64Array(N),tx=new Float64Array(N),ty=new Float64Array(N),slip=new Uint8Array(N),Fx=0,Fy=0,Mz=0,maxE=0,maxR=0,L=Math.max(g.xmax-g.xmin,1e-9),xc=.5*(g.xmax+g.xmin);for(let i=0;i<N;i++){let im=(i-1+N)%N,ip=(i+1)%N,du=(st.u[ip]-st.u[im])/(2*p.ds),dw=(st.w[ip]-st.w[im])/(2*p.ds),d2=(st.w[ip]-2*st.w[i]+st.w[im])/(p.ds*p.ds);eps[i]=du+st.w[i]/p.R0+.5*Math.pow(dw-st.u[i]/p.R0,2);chi[i]=d2-du/p.R0;duf[i]=-du/Math.max(p.ds,1e-9)-st.u[i]/(p.R0*p.R0);maxE=Math.max(maxE,Math.abs(eps[i]))}
+for(let i=0;i<N;i++){if(g.pen[i]<=0)continue;let ph=st.phi[i],erx=Math.sin(ph),etx=Math.cos(ph),carX=st.w[i]*erx+st.u[i]*etx,l=Math.max(0,g.xmax-g.x[i]);qx[i]=p.slipRatio*l-carX;qy[i]=Math.tan(p.alpha)*l-st.y[i];let a=p.kb*qx[i],b=p.kb*qy[i],lim=p.mu*g.pc[i],mag=Math.hypot(a,b),r=lim>0?mag/lim:0;if(mag>lim&&mag>1e-12){a=lim*a/mag;b=lim*b/mag;slip[i]=2;r=1}else slip[i]=r>.75?1:0;tx[i]=a;ty[i]=b;Fx+=a*p.b*p.ds;Fy+=b*p.b*p.ds;Mz+=(g.x[i]-xc)*b*p.b*p.ds;maxR=Math.max(maxR,r)}return{eps,chi,duf,qx,qy,tx,ty,slip,Fx,Fy,Mz,maxE,maxR,L}}
+function derive(){let g=geom(),f=fields(g),p=st.p;st.g=g;st.f=f;st.s={Fn:g.Fn,err:g.Fn-p.Ntarget,Fx:f.Fx,Fy:f.Fy,Mz:f.Mz,L:g.c?g.xmax-g.xmin:0,A:(g.c?g.xmax-g.xmin:0)*p.b,wmin:Math.min(...Array.from(st.w)),wmax:Math.max(...Array.from(st.w)),ymax:maxAbs(st.y),emax:maxAbs(f.eps),pmax:maxAbs(g.pc),ratio:f.maxR}}
+function maxAbs(a){let m=0;for(let v of a)m=Math.max(m,Math.abs(v));return m} function clamp(x,a,b){return Math.min(b,Math.max(a,x))}
+function iterate(){let p=st.p,N=p.N,ds=p.ds,w=st.w,u=st.u,y=st.y,g=geom(),f=fields(g),wn=new Float64Array(N),un=new Float64Array(N),yn=new Float64Array(N),T=Math.max(600,p.Tp+.002*p.EA),Ty=Math.max(300,.35*T),contactExtra=p.kc*p.b*ds,treadExtra=p.kb*p.b*ds,denW=p.kr*ds+2*T/ds+6*p.EI/Math.pow(ds,3)+.35*contactExtra,denU=p.kt*ds+2*T/ds+.35*treadExtra,denY=p.ky*ds+2*Ty/ds+.35*treadExtra,maxU=0;
+for(let i=0;i<N;i++){let im2=(i-2+N)%N,im=(i-1+N)%N,ip=(i+1)%N,ip2=(i+2)%N,ph=st.phi[i],erx=Math.sin(ph),erz=-Math.cos(ph),etx=Math.cos(ph),etz=Math.sin(ph),lapW=w[ip]-2*w[i]+w[im],biW=w[im2]-4*w[im]+6*w[i]-4*w[ip]+w[ip2],lapU=u[ip]-2*u[i]+u[im],lapY=y[ip]-2*y[i]+y[im];
+let Fw=T*lapW/ds-p.EI*biW/Math.pow(ds,3)-p.kr*w[i]*ds-p.EA*f.eps[i]*ds/Math.max(p.R0,1e-6),Fu=T*lapU/ds-p.kt*u[i]*ds-.12*p.EA*f.duf[i]*ds,Fy=Ty*lapY/ds-p.ky*y[i]*ds;
+if(g.pen[i]>0){let Fn=g.pc[i]*p.b*ds;Fw+=Fn*erz;Fu+=Fn*etz;let Fx=f.tx[i]*p.b*ds,Fyn=f.ty[i]*p.b*ds;Fw+=Fx*erx;Fu+=Fx*etx;Fy+=Fyn}
+let dw=.55*Fw/(denW+(g.pen[i]>0?contactExtra:0)),du=.55*Fu/(denU+(g.pen[i]>0?treadExtra:0)),dy=.55*Fy/(denY+(g.pen[i]>0?treadExtra:0));wn[i]=clamp(w[i]+dw,-.18*p.R0,.08*p.R0);un[i]=clamp(u[i]+du,-.10*p.R0,.10*p.R0);yn[i]=clamp(y[i]+dy,-.12*p.R0,.12*p.R0);maxU=Math.max(maxU,Math.abs(dw),Math.abs(du),Math.abs(dy))}
+zeroMean(un);zeroMean(yn);damp(w,wn,.82);damp(u,un,.84);damp(y,yn,.86);let k=Math.max(g.c*p.kc*p.b*ds,p.kc*p.b*ds),err=p.Ntarget-g.Fn,dz=clamp(-.42*err/k,-.0025,.0025);st.Cz=clamp(st.Cz+dz,p.R0*.72,p.R0*1.03);return Math.abs(err)/Math.max(p.Ntarget,1)+maxU/Math.max(.001,p.R0)}
+function damp(a,b,keep){for(let i=0;i<a.length;i++)a[i]=keep*a[i]+(1-keep)*b[i]} function zeroMean(a){let m=0;for(let v of a)m+=v;m/=a.length;for(let i=0;i<a.length;i++)a[i]-=m}
+function progress(i,m,r){let pct=m?Math.round(100*i/m):0;$('bar').style.width=pct+'%';$('pct').textContent=pct+'%';$('iter').textContent=`Итерация: ${i} / ${m}`;$('res').textContent=`Остаток: ${Number.isFinite(r)?r.toExponential(2):'-'}`}
+function drawAll(){derive();stats();drawWheel();drawPatch();drawStrain();drawPressure();drawShear()}
+function stats(){let p=st.p,s=st.s,arr=[['F_n цель',fmt(p.Ntarget,0)+' Н'],['F_n расчет',fmt(s.Fn,0)+' Н'],['ошибка нормали',fmt(s.err,0)+' Н'],['F_x brush',fmt(s.Fx,0)+' Н'],['F_x уклон',fmt(p.FxGrade,0)+' Н'],['F_y расчет',fmt(s.Fy,0)+' Н'],['F_y боковой уклон',fmt(p.FyReq,0)+' Н'],['M_z',fmt(s.Mz,1)+' Нм'],['мин. w',fmt(1000*s.wmin,1)+' мм'],['макс. |y|',fmt(1000*s.ymax,1)+' мм'],['длина пятна',fmt(1000*s.L,1)+' мм'],['площадь пятна',fmt(1e4*s.A,1)+' см²'],['макс. |epsilon|',fmt(100*s.emax,2)+' %'],['p max',fmt(s.pmax/1000,0)+' кПа'],['tau/mu p',fmt(s.ratio,2)],['C_z',fmt(1000*st.Cz,1)+' мм']];$('stats').innerHTML=arr.map(x=>`<div class="stat"><div class="k">${x[0]}</div><div class="v">${x[1]}</div></div>`).join('')}
+function mapper(c){let p=st.p,scale=Math.min(c.width,c.height)*.82,O={x:c.width*.52,y:c.height*.77},t={x:Math.cos(p.slope),y:-Math.sin(p.slope)},n={x:-Math.sin(p.slope),y:-Math.cos(p.slope)};return(x,z)=>({x:O.x+scale*(x*t.x+z*n.x),y:O.y+scale*(x*t.y+z*n.y)})}
+function drawWheel(){let c=$('wheel'),ctx=c.getContext('2d'),p=st.p,map=mapper(c);ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);let A=map(-.75,0),B=map(.75,0);ctx.strokeStyle='#6b7280';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();let out=[],ref=[],rim=[];for(let i=0;i<p.N;i++){let ph=st.phi[i],erx=Math.sin(ph),erz=-Math.cos(ph),etx=Math.cos(ph),etz=Math.sin(ph);ref.push(map(p.R0*erx,st.Cz+p.R0*erz));out.push(map((p.R0+st.w[i])*erx+st.u[i]*etx,st.Cz+(p.R0+st.w[i])*erz+st.u[i]*etz));rim.push(map(p.Rrim*erx,st.Cz+p.Rrim*erz))}
+path(ctx,ref,'rgba(17,24,39,.25)',2,true);path(ctx,out,'#111827',25,false);for(let i=0;i<p.N;i++){let j=(i+1)%p.N;ctx.strokeStyle=epsColor(st.f.eps[i],st.f.maxE);ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(out[i].x,out[i].y);ctx.lineTo(out[j].x,out[j].y);ctx.stroke()}path(ctx,rim,'#cbd5e1',34,false);path(ctx,rim,'#64748b',2,false);let C=map(0,st.Cz);ctx.fillStyle='#94a3b8';ctx.beginPath();ctx.arc(C.x,C.y,14,0,7);ctx.fill();for(let k=0;k<6;k++){let a=k*Math.PI/3,A=map(.035*Math.sin(a),st.Cz-.035*Math.cos(a)),B=map(p.Rrim*.85*Math.sin(a),st.Cz-p.Rrim*.85*Math.cos(a));ctx.strokeStyle='#64748b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke()}
+let cnt=0;for(let i=0;i<p.N;i++)if(st.g.pen[i]>0){let a=map(st.g.x[i],0),b=map(st.g.x[i],.018);ctx.strokeStyle=st.f.slip[i]===2?'#f97316':'#22c55e';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();if(cnt++%2===0){let base=map(st.g.x[i],.03),len=clamp(Math.hypot(st.f.qx[i],st.f.qy[i])*900,4,32),dx=len*Math.cos(p.slope)*Math.sign(st.f.qx[i]||1),dy=-len*Math.sin(p.slope)*Math.sign(st.f.qx[i]||1)-.45*len*Math.sign(st.f.qy[i]||1);arrow(ctx,base.x,base.y,base.x+dx,base.y+dy)}}
+ctx.fillStyle='#111827';ctx.font='15px Arial';ctx.fillText('Диск + бескамерная шина. Цвет контура = epsilon. Стрелки = qx/qy.',20,28);ctx.fillStyle='#667085';ctx.fillText(`Уклон ${fmt(p.slopeDeg,0)}°, боковой уклон ${fmt(p.bankDeg,0)}°, alpha ${fmt(p.slipDeg,1)}°`,20,52);ctx.fillText('Пунктир - недеформированный контур',20,c.height-22)}
+function path(ctx,pts,col,lw,dash){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.lineJoin='round';ctx.lineCap='round';if(dash)ctx.setLineDash([8,8]);ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.closePath();ctx.stroke();ctx.restore()}
+function epsColor(e,m){m=Math.max(m,.002);let t=clamp(e/m,-1,1);if(t<-.08)return mix('#e5e7eb','#2563eb',-t);if(t>.08)return mix('#e5e7eb','#dc2626',t);return '#e5e7eb'} function mix(a,b,t){let A=hex(a),B=hex(b),C=A.map((v,i)=>Math.round(v+(B[i]-v)*t));return`rgb(${C[0]},${C[1]},${C[2]})`} function hex(s){let n=parseInt(s.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255]}
+function arrow(ctx,x1,y1,x2,y2){let a=Math.atan2(y2-y1,x2-x1);ctx.strokeStyle='#0f766e';ctx.fillStyle='#0f766e';ctx.lineWidth=1.7;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-7*Math.cos(a-.45),y2-7*Math.sin(a-.45));ctx.lineTo(x2-7*Math.cos(a+.45),y2-7*Math.sin(a+.45));ctx.closePath();ctx.fill()}
+function drawPatch(){let c=$('patch'),ctx=c.getContext('2d'),p=st.p,ids=[];ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#111827';ctx.font='15px Arial';ctx.fillText('Пятно контакта сверху: x-y и зоны трения',16,22);for(let i=0;i<p.N;i++)if(st.g.pen[i]>0)ids.push(i);if(ids.length<2){ctx.fillStyle='#667085';ctx.fillText('Контакт не найден',16,60);return}ids.sort((a,b)=>st.g.x[a]-st.g.x[b]);let left=45,right=20,top=45,bottom=34,xmin=st.g.xmin,xmax=st.g.xmax,ymin=-p.b/2-st.s.ymax,ymax=p.b/2+st.s.ymax,scale=Math.min((c.width-left-right)/Math.max(xmax-xmin,1e-6),(c.height-top-bottom)/Math.max(ymax-ymin,1e-6)),X=x=>left+(x-xmin)*scale,Y=y=>c.height-bottom-(y-ymin)*scale;ctx.strokeStyle='#e5e7eb';ctx.strokeRect(left,top,c.width-left-right,c.height-top-bottom);for(let i of ids){let x0=X(st.g.x[i])-2,y1=Y(st.y[i]-p.b/2),y2=Y(st.y[i]+p.b/2);ctx.strokeStyle=st.f.slip[i]===2?'#f97316':(st.f.slip[i]===1?'#facc15':'#22c55e');ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x0,y1);ctx.lineTo(x0,y2);ctx.stroke()}ctx.fillStyle='#374151';ctx.font='13px Arial';ctx.fillText(`L = ${fmt(1000*st.s.L,1)} мм`,left,c.height-12);ctx.fillText(`B = ${fmt(1000*p.b,0)} мм`,c.width-120,c.height-12)}
+function axes(ctx,L,T,W,H){ctx.strokeStyle='#d1d5db';ctx.lineWidth=1;for(let i=0;i<=4;i++){let y=T+H*i/4;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(L+W,y);ctx.stroke()}ctx.strokeStyle='#111827';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(L,T);ctx.lineTo(L,T+H);ctx.lineTo(L+W,T+H);ctx.stroke()}
+function plotLine(canvas,data,title,color){let c=$(canvas),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#111827';ctx.font='15px Arial';ctx.fillText(title,16,22);let L=48,R=18,T=42,B=32,W=c.width-L-R,H=c.height-T-B,min=Math.min(...data),max=Math.max(...data);if(Math.abs(max-min)<1e-9){max++;min--}axes(ctx,L,T,W,H);ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();data.forEach((v,i)=>{let x=L+W*i/Math.max(data.length-1,1),y=T+H-H*(v-min)/(max-min);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke();ctx.fillStyle='#667085';ctx.font='12px Arial';ctx.fillText(`min ${fmt(min,2)} / max ${fmt(max,2)}`,L,c.height-10)}
+function drawStrain(){plotLine('strain',Array.from(st.f.eps).map(v=>100*v),'epsilon по окружности, %','#1d4ed8')}
+function plotXY(canvas,pts,title,color){let c=$(canvas),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#111827';ctx.font='15px Arial';ctx.fillText(title,16,22);let L=52,R=18,T=42,B=34,W=c.width-L-R,H=c.height-T-B;axes(ctx,L,T,W,H);if(pts.length<2)return;pts.sort((a,b)=>a[0]-b[0]);let xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(0,Math.min(...ys)),ymax=Math.max(1,Math.max(...ys)*1.15);ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.beginPath();pts.forEach((pt,i)=>{let x=L+W*(pt[0]-xmin)/Math.max(xmax-xmin,1e-9),y=T+H-H*(pt[1]-ymin)/(ymax-ymin);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke()}
+function drawPressure(){let pts=[];for(let i=0;i<st.p.N;i++)if(st.g.pen[i]>0)pts.push([st.g.x[i],st.g.pc[i]/1000]);plotXY('pressure',pts,'Контактное давление p(x), кПа','#0f766e')}
+function drawShear(){let c=$('shear'),ctx=c.getContext('2d'),tx=[],ty=[];for(let i=0;i<st.p.N;i++)if(st.g.pen[i]>0){tx.push([st.g.x[i],st.f.tx[i]/1000]);ty.push([st.g.x[i],st.f.ty[i]/1000])}ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#111827';ctx.font='15px Arial';ctx.fillText('Сдвиговые напряжения tau_x / tau_y, кПа',16,22);let L=52,R=18,T=42,B=34,W=c.width-L-R,H=c.height-T-B;axes(ctx,L,T,W,H);if(tx.length<2)return;let all=tx.concat(ty),xs=all.map(p=>p[0]),ys=all.map(p=>p[1]),xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys),pad=.12*Math.max(1,ymax-ymin);ymin-=pad;ymax+=pad;series(ctx,tx,L,T,W,H,xmin,xmax,ymin,ymax,'#1d4ed8');series(ctx,ty,L,T,W,H,xmin,xmax,ymin,ymax,'#b91c1c');ctx.fillStyle='#1d4ed8';ctx.fillText('tau_x',L+8,T+16);ctx.fillStyle='#b91c1c';ctx.fillText('tau_y',L+70,T+16)}
+function series(ctx,pts,L,T,W,H,xmin,xmax,ymin,ymax,color){ctx.strokeStyle=color;ctx.lineWidth=2.2;ctx.beginPath();pts.forEach((pt,i)=>{let x=L+W*(pt[0]-xmin)/Math.max(xmax-xmin,1e-9),y=T+H-H*(pt[1]-ymin)/Math.max(ymax-ymin,1e-9);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke()}
+labels();init();drawAll();
+</script>
+</body>
+</html>
