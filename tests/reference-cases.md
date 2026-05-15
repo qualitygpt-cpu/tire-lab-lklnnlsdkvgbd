@@ -14,4 +14,14 @@
    - Fy.
 6. Record any discrepancies.
 
-> Note: exact parity is not yet guaranteed until rendering paths and all diagnostics from legacy are fully migrated.
+## Visual regression checklist (app)
+
+- [ ] Default case shows tire touching road.
+- [ ] Contact patch appears at bottom of tire.
+- [ ] Strain plot is not empty.
+- [ ] Pressure plot appears only in contact zone.
+- [ ] Shear plot changes when slip angle or slip ratio changes.
+- [ ] Increasing load increases deformation/contact patch qualitatively.
+- [ ] Increasing pressure reduces deformation/contact patch qualitatively.
+
+> Note: visual parity is approximate and should be manually checked.

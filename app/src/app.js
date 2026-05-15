@@ -1,5 +1,12 @@
 (function () {
   function metric(label, value) { return '<div class="stat"><div class="k">' + label + '</div><div class="v">' + value + '</div></div>'; }
+  function renderVisuals(state) {
+    window.TireLabWheelView.render(document.getElementById('wheelCanvas'), state);
+    window.TireLabContactPatchView.render(document.getElementById('contactPatchCanvas'), state);
+    window.TireLabPlotView.renderStrain(document.getElementById('strainCanvas'), state);
+    window.TireLabPlotView.renderPressure(document.getElementById('pressureCanvas'), state);
+    window.TireLabPlotView.renderShear(document.getElementById('shearCanvas'), state);
+  }
   function runAndRender() {
     var defs = window.TireLabParams.getDefaultParameterDefinitions();
     var raw = window.TireLabControls.read(defs);
@@ -16,6 +23,7 @@
       metric('макс. |epsilon|', (r.maxEpsilonAbs * 100).toFixed(2) + ' %'), metric('p max', (r.maxContactPressure / 1000).toFixed(0) + ' кПа'),
       metric('tau / mu p', r.tauMuPRatio.toFixed(2)), metric('итерации', String(r.solverIterations)), metric('residual', r.residual.toExponential(2))
     ].join('');
+    renderVisuals(state);
   }
   document.addEventListener('DOMContentLoaded', function () {
     var defs = window.TireLabParams.getDefaultParameterDefinitions(), raw = window.TireLabPresets.getDefaults();
@@ -25,6 +33,7 @@
     defs.forEach(function (d) { document.getElementById(d.key).addEventListener('input', function () { window.TireLabControls.updateLabels(defs); }); });
     document.getElementById('nodes').addEventListener('change', function () { window.TireLabControls.updateLabels(defs); });
     document.getElementById('run').addEventListener('click', runAndRender);
-    document.getElementById('reset').addEventListener('click', function () { var r = window.TireLabPresets.getDefaults(); window.TireLabControls.write(defs, r); window.TireLabControls.updateLabels(defs); });
+    document.getElementById('reset').addEventListener('click', function () { var r = window.TireLabPresets.getDefaults(); window.TireLabControls.write(defs, r); window.TireLabControls.updateLabels(defs); renderVisuals(window.TireLabSolver.run(r, {})); });
+    runAndRender();
   });
 })();
