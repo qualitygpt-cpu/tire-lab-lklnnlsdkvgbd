@@ -28,3 +28,10 @@
 ## UI shell
 
 `app/index.html` loads scripts in plain script-tag dependency order (no modules/bundler), compatible with GitHub Pages and local preview tools.
+
+## Rendering layer and engineering annotations
+
+- `wheelView.js` draws the side view with explicit engineering callouts: road, wheel center, rim, original/deformed contour, contact zone, and load/slope annotations.
+- `contactPatchView.js` renders a top-view map with axes, units, ticks, slip-state legend, and compact contact summary (length/area/max lateral displacement).
+- `plotView.js` provides reusable scalar-plot framing (title, axes, grid, labels, min/max, zero line) used by strain, pressure, and shear charts.
+- Explanatory UI cards in `index.html`/`app.css` document how to interpret each plot without changing model equations.

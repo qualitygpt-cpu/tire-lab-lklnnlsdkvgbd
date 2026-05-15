@@ -29,3 +29,13 @@
 1. Откройте `legacy/tire_reduced_fem_model_original.html` и `app/index.html`.
 2. Для базового сценария проверьте порядок величин: `F_n`, `длина пятна`, `p max`, `Fx`, `Fy`.
 3. Сравнение выполняется качественно, допустимы небольшие расхождения визуализации.
+
+## Visual QA checklist
+
+- [ ] Axes are visible on wheel/contact/scalar plots.
+- [ ] Units are visible on all scalar/contact plots.
+- [ ] Contact zone is highlighted in wheel and chart context where applicable.
+- [ ] Pressure graph is plotted only where contact (`pen > 0`) exists.
+- [ ] Shear graph shows both `tau_x` and `tau_y` labels.
+- [ ] Wheel view clearly distinguishes road, rim, original contour, deformed contour.
+- [ ] Mobile layout keeps labels readable and charts stacked vertically.

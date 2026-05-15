@@ -1,5 +1,5 @@
 (function () {
-  function metric(label, value) { return '<div class="stat"><div class="k">' + label + '</div><div class="v">' + value + '</div></div>'; }
+  function metric(section, label, value, hint) { return '<div class="stat"><div class="k">'+section+' · '+label+'</div><div class="v">'+value+'</div><div class="hint">'+hint+'</div></div>'; }
   function renderVisuals(state) {
     window.TireLabWheelView.render(document.getElementById('wheelCanvas'), state);
     window.TireLabContactPatchView.render(document.getElementById('contactPatchCanvas'), state);
@@ -29,12 +29,21 @@
     document.getElementById('res').textContent = 'Остаток: ' + r.residual.toExponential(2);
     document.getElementById('pct').textContent = '100%'; document.getElementById('bar').style.width = '100%';
     document.getElementById('results').innerHTML = [
-      metric('F_n цель', r.targetNormalForce.toFixed(0) + ' Н'), metric('F_n расчет', r.calculatedNormalForce.toFixed(0) + ' Н'), metric('Ошибка нормали', r.normalForceError.toFixed(0) + ' Н'),
-      metric('Fx', r.Fx.toFixed(0) + ' Н'), metric('Fy', r.Fy.toFixed(0) + ' Н'), metric('Mz', r.Mz.toFixed(1) + ' Нм'),
-      metric('мин. w', (r.minimumW * 1000).toFixed(1) + ' мм'), metric('макс. |y|', (r.maximumYAbs * 1000).toFixed(1) + ' мм'),
-      metric('длина пятна', (r.contactPatchLength * 1000).toFixed(1) + ' мм'), metric('площадь пятна', (r.contactPatchArea * 1e4).toFixed(1) + ' см²'),
-      metric('макс. |epsilon|', (r.maxEpsilonAbs * 100).toFixed(2) + ' %'), metric('p max', (r.maxContactPressure / 1000).toFixed(0) + ' кПа'),
-      metric('tau / mu p', r.tauMuPRatio.toFixed(2)), metric('итерации', String(r.solverIterations)), metric('residual', r.residual.toExponential(2))
+      metric('Нагрузка и равновесие', 'F_n цель', r.targetNormalForce.toFixed(0) + ' Н', 'Заданная вертикальная нагрузка'),
+      metric('Нагрузка и равновесие', 'F_n расчет', r.calculatedNormalForce.toFixed(0) + ' Н', 'Фактически получено в контакте'),
+      metric('Нагрузка и равновесие', 'Ошибка нормали', r.normalForceError.toFixed(0) + ' Н', 'Чем ближе к нулю, тем лучше баланс'),
+      metric('Деформация', 'мин. w', (r.minimumW * 1000).toFixed(1) + ' мм', 'Радиальный прогиб шины'),
+      metric('Деформация', 'макс. |epsilon|', (r.maxEpsilonAbs * 100).toFixed(2) + ' %', 'Локальная растяжка/сжатие каркаса'),
+      metric('Деформация', 'макс. |y|', (r.maximumYAbs * 1000).toFixed(1) + ' мм', 'Боковое смещение профиля'),
+      metric('Пятно контакта', 'длина пятна', (r.contactPatchLength * 1000).toFixed(1) + ' мм', 'Размер зоны по продольной оси'),
+      metric('Пятно контакта', 'площадь пятна', (r.contactPatchArea * 1e4).toFixed(1) + ' см²', 'Эффективная опорная площадь'),
+      metric('Пятно контакта', 'p max', (r.maxContactPressure / 1000).toFixed(0) + ' кПа', 'Пик локального давления'),
+      metric('Трение и сдвиг', 'Fx', r.Fx.toFixed(0) + ' Н', 'Продольная сила в контакте'),
+      metric('Трение и сдвиг', 'Fy', r.Fy.toFixed(0) + ' Н', 'Боковая сила (увод)'),
+      metric('Трение и сдвиг', 'tau / mu p', r.tauMuPRatio.toFixed(2), 'Запас до скольжения, >1 — риск срыва'),
+      metric('Численный расчет', 'Mz', r.Mz.toFixed(1) + ' Нм', 'Выравнивающий момент'),
+      metric('Численный расчет', 'итерации', String(r.solverIterations), 'Число шагов solver'),
+      metric('Численный расчет', 'residual', r.residual.toExponential(2), 'Невязка итерационного решения')
     ].join('');
     setStatus(statusSuffix ? ('Готово: ' + statusSuffix) : 'Готово: расчет выполнен');
     renderVisuals(state);
