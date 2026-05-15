@@ -1,58 +1,17 @@
-window.ResultsModel = {
-  computeResults: function computeResults(state) {
-    var p = state.params;
-    var g = state.geometry;
-    var c = state.contact;
-    var b = state.brush;
-
-    state.results = {
-      Fn: g.Fn,
-      err: g.Fn - p.Ntarget,
-      Fx: b.Fx,
-      Fy: b.Fy,
-      Mz: b.Mz,
-      L: g.c ? g.xmax - g.xmin : 0,
-      A: (g.c ? g.xmax - g.xmin : 0) * p.b,
-      wmin: minValue(state.w),
-      wmax: maxValue(state.w),
-      ymax: maxAbs(state.y),
-      emax: maxAbs(c.eps),
-      pmax: maxAbs(g.pc),
-      ratio: b.maxR,
-      Cz: state.Cz,
-      deflectionMm: ((p.R0 - state.Cz) * 1000).toFixed(2),
-      patchLengthMm: ((g.c ? g.xmax - g.xmin : 0) * 1000).toFixed(1),
-      maxFxN: b.Fx.toFixed(1),
-      converged: state.solver.converged
-    };
-
-    return state.results;
-  }
-};
-
-function maxAbs(a) {
-  var m = 0;
-  var i;
-  for (i = 0; i < a.length; i++) {
-    m = Math.max(m, Math.abs(a[i]));
-  }
-  return m;
-}
-
-function minValue(a) {
-  var m = Infinity;
-  var i;
-  for (i = 0; i < a.length; i++) {
-    m = Math.min(m, a[i]);
-  }
-  return m;
-}
-
-function maxValue(a) {
-  var m = -Infinity;
-  var i;
-  for (i = 0; i < a.length; i++) {
-    m = Math.max(m, a[i]);
-  }
-  return m;
-}
+(function () {
+  function maxAbs(a) { var m = 0; for (var i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i])); return m; }
+  function minVal(a) { var m = Infinity; for (var i = 0; i < a.length; i++) m = Math.min(m, a[i]); return m; }
+  window.TireLabResults = {
+    computeResults: function (state) {
+      var g = state.last.geometry, f = state.last.contact, b = state.last.brush, p = state.p;
+      return {
+        targetNormalForce: p.Ntarget, calculatedNormalForce: g.Fn, normalForceError: g.Fn - p.Ntarget,
+        Fx: b.Fx, Fy: b.Fy, Mz: b.Mz,
+        minimumW: minVal(state.w), maximumYAbs: maxAbs(state.y),
+        contactPatchLength: g.c ? g.xmax - g.xmin : 0, contactPatchArea: (g.c ? g.xmax - g.xmin : 0) * p.b,
+        maxEpsilonAbs: maxAbs(f.eps), maxContactPressure: maxAbs(g.pc), tauMuPRatio: b.maxR,
+        solverIterations: state.iteration, residual: state.residual
+      };
+    }
+  };
+})();

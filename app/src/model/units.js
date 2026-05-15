@@ -1,3 +1,47 @@
-window.UnitsModel = {
-  kpaToPa: function (kpa) { return kpa * 1000; }
-};
+(function () {
+  window.TireLabUnits = {
+    normalizeParams: function (raw) {
+      var p = Object.assign({}, raw);
+      p.mass = Number(p.mass);
+      p.slopeDeg = Number(p.slopeDeg);
+      p.bankDeg = Number(p.bankDeg);
+      p.pressureKPa = Number(p.pressureKPa);
+      p.radius = Number(p.radius);
+      p.rimRadius = Number(p.rimRadius);
+      p.widthMM = Number(p.widthMM);
+      p.mu = Number(p.mu);
+      p.slipDeg = Number(p.slipDeg);
+      p.slipRatio = Number(p.slipRatio);
+      p.EAkN = Number(p.EAkN);
+      p.EI = Number(p.EI);
+      p.krkN = Number(p.krkN);
+      p.kykN = Number(p.kykN);
+      p.treadMPa = Number(p.treadMPa);
+      p.contactMPa = Number(p.contactMPa);
+      p.iterations = Number(p.iterations);
+      p.N = Number(p.nodes);
+      p.g = 9.81;
+      p.W = p.mass * p.g;
+      p.slope = p.slopeDeg * Math.PI / 180;
+      p.bank = p.bankDeg * Math.PI / 180;
+      p.alpha = p.slipDeg * Math.PI / 180;
+      p.R0 = p.radius;
+      p.Rrim = Math.min(p.rimRadius, p.radius * 0.78);
+      p.b = p.widthMM / 1000;
+      p.pressure = p.pressureKPa * 1000;
+      p.EA = p.EAkN * 1000;
+      p.kr = p.krkN * 1000;
+      p.ky = p.kykN * 1000;
+      p.kt = p.kr * 0.5;
+      p.kb = p.treadMPa * 1e6;
+      p.kc = p.contactMPa * 1e6;
+      p.Ntarget = p.W * Math.cos(p.slope) * Math.cos(p.bank);
+      p.FxGrade = p.W * Math.sin(p.slope);
+      p.FyReq = p.W * Math.sin(p.bank);
+      p.dphi = 2 * Math.PI / p.N;
+      p.ds = p.R0 * p.dphi;
+      p.Tp = p.pressure * p.b * p.R0;
+      return p;
+    }
+  };
+})();
