@@ -73,13 +73,14 @@
   }
 
   function renderPressure(canvas, state) {
-    var pts = getContactData(state, 'geometry').map(function () { return null; });
-    pts = [];
-    for (var i = 0; i < state.p.N; i++) if (state.last.geometry.pen[i] > 0) pts.push([1000 * state.last.geometry.x[i], state.last.geometry.pc[i] / 1000]);
+    var pts = [];
+    if (state.p.M > 1) {
+      for (var i = 0; i < state.p.N; i++) { var sx = 0, sp = 0; for (var j = 0; j < state.p.M; j++) { var k = i * state.p.M + j; if (state.last.geometry.pen[k] > 0) { sx += state.last.geometry.x[k]; sp += state.last.geometry.pc[k]; } } if (sp > 0) pts.push([1000 * sx / state.p.M, (sp / state.p.M) / 1000]); }
+    } else for (var i = 0; i < state.p.N; i++) if (state.last.geometry.pen[i] > 0) pts.push([1000 * state.last.geometry.x[i], state.last.geometry.pc[i] / 1000]);
     if (pts.length < 2) return;
     pts.sort(function (a, b) { return a[0] - b[0]; });
     var ys = pts.map(function (p) { return p[1]; }), ymax = Math.max.apply(null, ys);
-    var opts = { title: 'Контактное давление p(x)', xlabel: 'x в пятне контакта, мм', ylabel: 'p, кПа', xmin: pts[0][0], xmax: pts[pts.length - 1][0], ymin: 0, ymax: ymax * 1.2 };
+    var opts = { title: (state.p.M > 1 ? 'Контактное давление p(x), усреднение по ширине' : 'Контактное давление p(x)'), xlabel: 'x в пятне контакта, мм', ylabel: 'p, кПа', xmin: pts[0][0], xmax: pts[pts.length - 1][0], ymin: 0, ymax: ymax * 1.2 };
     var ctx = canvas.getContext('2d'), box = setupChart(ctx, canvas, opts);
     drawSeries(ctx, box, opts, pts, window.TireLabColors.pressure);
     var imax = ys.indexOf(ymax), px = pts[imax][0];
@@ -90,14 +91,16 @@
 
   function renderShear(canvas, state) {
     var tx = [], ty = [];
-    for (var i = 0; i < state.p.N; i++) if (state.last.geometry.pen[i] > 0) {
+    if (state.p.M > 1) {
+      for (var i = 0; i < state.p.N; i++) { var sx = 0, stx = 0, sty = 0, c = 0; for (var j = 0; j < state.p.M; j++) { var k = i * state.p.M + j; if (state.last.geometry.pen[k] > 0) { sx += state.last.geometry.x[k]; stx += state.last.brush.tx[k]; sty += state.last.brush.ty[k]; c++; } } if (c) { tx.push([1000 * sx / c, stx / c / 1000]); ty.push([1000 * sx / c, sty / c / 1000]); } }
+    } else for (var i = 0; i < state.p.N; i++) if (state.last.geometry.pen[i] > 0) {
       tx.push([1000 * state.last.geometry.x[i], state.last.brush.tx[i] / 1000]);
       ty.push([1000 * state.last.geometry.x[i], state.last.brush.ty[i] / 1000]);
     }
     if (tx.length < 2) return;
     tx.sort(function (a, b) { return a[0] - b[0]; }); ty.sort(function (a, b) { return a[0] - b[0]; });
     var ys = tx.concat(ty).map(function (p) { return p[1]; }), ymin = Math.min.apply(null, ys), ymax = Math.max.apply(null, ys), pad = 0.2 * Math.max(1, ymax - ymin);
-    var opts = { title: 'Сдвиговые напряжения tau_x и tau_y', xlabel: 'x в пятне контакта, мм', ylabel: 'tau, кПа', xmin: tx[0][0], xmax: tx[tx.length - 1][0], ymin: ymin - pad, ymax: ymax + pad };
+    var opts = { title: (state.p.M > 1 ? 'Сдвиговые напряжения tau_x и tau_y (усреднение по ширине)' : 'Сдвиговые напряжения tau_x и tau_y'), xlabel: 'x в пятне контакта, мм', ylabel: 'tau, кПа', xmin: tx[0][0], xmax: tx[tx.length - 1][0], ymin: ymin - pad, ymax: ymax + pad };
     var ctx = canvas.getContext('2d'), box = setupChart(ctx, canvas, opts);
     drawSeries(ctx, box, opts, tx, window.TireLabColors.tauX); drawSeries(ctx, box, opts, ty, window.TireLabColors.tauY);
     ctx.fillStyle = window.TireLabColors.tauX; ctx.fillText('tau_x', box.m.L + 10, box.m.T + 16);
