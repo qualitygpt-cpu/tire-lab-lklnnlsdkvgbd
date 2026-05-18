@@ -16,13 +16,14 @@
     { key: 'kykN', label: 'Боковая связь ky', min: 50, max: 700, step: 10, defaultValue: 260, unit: 'кН/м²' },
     { key: 'treadMPa', label: 'Сдвиговая жесткость протектора kb', min: 1, max: 22, step: 0.5, defaultValue: 8, unit: 'МПа/м' },
     { key: 'contactMPa', label: 'Penalty контакт kc', min: 10, max: 120, step: 5, defaultValue: 55, unit: 'МПа/м' },
-    { key: 'iterations', label: 'Итераций решателя', min: 200, max: 1800, step: 100, defaultValue: 900, unit: '' }
+    { key: 'iterations', label: 'Итераций решателя', min: 200, max: 1800, step: 100, defaultValue: 900, unit: '' },
+    { key: 'widthNodes', label: 'Узлов по ширине', min: 5, max: 31, step: 2, defaultValue: 15, unit: '' }
   ];
 
   window.TireLabParams = {
     getDefaultParameterDefinitions: function () { return DEFINITIONS.slice(); },
     createRawDefaults: function () {
-      var raw = { nodes: 96 };
+      var raw = { nodes: 96, widthNodes: 15 };
       DEFINITIONS.forEach(function (d) { raw[d.key] = d.defaultValue; });
       return raw;
     }

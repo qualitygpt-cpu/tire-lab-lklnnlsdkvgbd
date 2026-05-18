@@ -22,7 +22,9 @@
     for (var i = 0; i < p.N; i++) {
       var ph = state.phi[i], erx = Math.sin(ph), erz = -Math.cos(ph), etx = Math.cos(ph), etz = Math.sin(ph);
       ref.push(map(p.R0 * erx, state.Cz + p.R0 * erz));
-      out.push(map((p.R0 + state.w[i]) * erx + state.u[i] * etx, state.Cz + (p.R0 + state.w[i]) * erz + state.u[i] * etz));
+      var wv = state.w[i], uv = state.u[i];
+      if (p.M > 1) { var sw = 0, su = 0; for (var jj = 0; jj < p.M; jj++) { var kk = i * p.M + jj; sw += state.w2[kk]; su += state.u2[kk]; } wv = sw / p.M; uv = su / p.M; }
+      out.push(map((p.R0 + wv) * erx + uv * etx, state.Cz + (p.R0 + wv) * erz + uv * etz));
       rim.push(map(p.Rrim * erx, state.Cz + p.Rrim * erz));
       if (g.pen[i] > 0) contactX.push(g.x[i]);
     }

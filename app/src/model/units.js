@@ -19,6 +19,7 @@
       p.treadMPa = Number(p.treadMPa);
       p.contactMPa = Number(p.contactMPa);
       p.iterations = Number(p.iterations);
+      p.widthNodes = raw.widthNodes === undefined ? 1 : Number(raw.widthNodes);
       p.N = Number(p.nodes);
       p.g = 9.81;
       p.W = p.mass * p.g;
@@ -41,6 +42,12 @@
       p.dphi = 2 * Math.PI / p.N;
       p.ds = p.R0 * p.dphi;
       p.Tp = p.pressure * p.b * p.R0;
+      p.M = Math.max(1, Math.round(p.widthNodes));
+      p.dy = p.M > 1 ? p.b / (p.M - 1) : p.b;
+      p.useWidthGrid = p.M > 1;
+      var eta = new Float64Array(p.M);
+      for (var j = 0; j < p.M; j++) eta[j] = p.M > 1 ? -0.5 * p.b + j * p.dy : 0;
+      p.eta = eta;
       return p;
     }
   };
