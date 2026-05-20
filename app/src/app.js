@@ -41,6 +41,8 @@
       metric('Трение и сдвиг', 'Fx', r.Fx.toFixed(0) + ' Н', 'Продольная сила в контакте'),
       metric('Трение и сдвиг', 'Fy', r.Fy.toFixed(0) + ' Н', 'Боковая сила (увод)'),
       metric('Трение и сдвиг', 'tau / mu p', r.tauMuPRatio.toFixed(2), 'Запас до скольжения, >1 — риск срыва'),
+      metric('Трение и сдвиг', 'C_alpha', (r.corneringStiffness / 1000).toFixed(1) + ' кН/рад', 'Угловая жесткость по уводу (brush model)'),
+      metric('Трение и сдвиг', 'stick / slip', (100 * r.stickRatio).toFixed(0) + '% / ' + (100 * r.slipRatio).toFixed(0) + '%', 'Доли зон прилипания и скольжения в пятне'),
       metric('Численный расчет', 'Mz', r.Mz.toFixed(1) + ' Нм', 'Выравнивающий момент'),
       metric('Численный расчет', 'итерации', String(r.solverIterations), 'Число шагов solver'),
       metric('Численный расчет', 'residual', r.residual.toExponential(2), 'Невязка итерационного решения')
