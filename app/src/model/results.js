@@ -10,6 +10,7 @@
         for (var i = 0; i < p.N; i++) for (var j = 0; j < p.M; j++) { var k = i * p.M + j, load = g.pc[k] * g.dA; lr += g.y[k] >= 0 ? load : -load; fr += g.x[k] >= g.pressureCenterX ? load : -load; }
         lr /= g.Fn; fr /= g.Fn;
       }
+      var post = window.TireLabPostprocess.compute(state);
       return {
         targetNormalForce: p.Ntarget, calculatedNormalForce: g.Fn, normalForceError: g.Fn - p.Ntarget,
         Fx: b.Fx, Fy: b.Fy, Mz: b.Mz, minimumW: p.M > 1 ? minVal(state.w2) : minVal(state.w), maximumYAbs: p.M > 1 ? maxAbs(state.v2) : maxAbs(state.y),
@@ -17,7 +18,11 @@
         maxEpsilonAbs: maxAbs(f.eps), maxContactPressure: maxP, maxPressure: maxP, meanPressure: meanP, loadedArea: area,
         pressureCenterX: g.pressureCenterX || 0, pressureCenterY: g.pressureCenterY || 0,
         leftRightPressureImbalance: lr, frontRearPressureImbalance: fr,
-        tauMuPRatio: b.maxR, solverIterations: state.iteration, residual: state.residual
+        tauMuPRatio: b.maxR,
+        corneringStiffness: post.corneringStiffness,
+        stickRatio: post.stickRatio, nearLimitRatio: post.nearLimitRatio, slipRatio: post.slipRatio,
+        maps: post.maps,
+        solverIterations: state.iteration, residual: state.residual
       };
     }
   };
